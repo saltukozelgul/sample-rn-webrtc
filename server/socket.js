@@ -17,6 +17,7 @@ module.exports.initIO = (httpServer) => {
         socket.join(socket.user);
 
         socket.on("call", (data) => {
+            console.log(data);
             let calleeId = data.calleeId;
             let rtcMessage = data.rtcMessage;
 
@@ -28,7 +29,9 @@ module.exports.initIO = (httpServer) => {
 
         socket.on("answerCall", (data) => {
             let callerId = data.callerId;
-            rtcMessage = data.rtcMessage;
+            rtcMessage = data.answer;
+
+            console.log("answerCall", callerId, rtcMessage);
 
             socket.to(callerId).emit("callAnswered", {
                 callee: socket.user,

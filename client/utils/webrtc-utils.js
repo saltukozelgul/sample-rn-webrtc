@@ -21,6 +21,7 @@ export const createOffer = async (peerConnection) => {
         }
     };
     let offer = await peerConnection.createOffer(sessionConstraints);
+    console.log("Offer created", offer);
     await peerConnection.setLocalDescription(offer);
     return peerConnection.localDescription;
 }
@@ -33,8 +34,7 @@ export const createAnswer = async (peerConnection, offeredDescriptionStr) => {
             VoiceActivityDetection: true
         }
     };
-    const offerDescription = new RTCSessionDescription(offeredDescriptionStr);
-    await peerConnection.setRemoteDescription(offerDescription);
+    await peerConnection.setRemoteDescription(offeredDescriptionStr);
     const answer = await peerConnection.createAnswer();
     await peerConnection.setLocalDescription(answer);
     return peerConnection.localDescription;

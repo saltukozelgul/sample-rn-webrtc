@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { SafeAreaView, StyleSheet, View, Button, Text, TextInput, NativeModules } from "react-native";
 import Snackbar from "react-native-snackbar";
 import { RTCView, mediaDevices, MediaStream } from "react-native-webrtc";
@@ -9,7 +9,7 @@ const App = () => {
   const [callerId] = useState(
     Math.floor(100000 + Math.random() * 900000).toString(),
   );
-  const otherUserId = useRef(null);
+  const otherUserId = useRef<String>();
 
   const [isLocalStreamStarted, setIsLocalStreamStarted] = useState<boolean>(false);
   const [localStream, setLocalStream] = useState<MediaStream>();
@@ -26,22 +26,51 @@ const App = () => {
   let dataChannel = peerConnection.createDataChannel("dataChannel");
 
   const createOfferFunction = async () => {
+    // start local stream
+    await startLocalStream();
     const offer = await createOffer(peerConnection);
-
-    console.log("Offer", offer);
-
+    var data = {
+      "calleeId": otherUserId.current,
+      "rtcMessage": offer,
+    };
     // Send offer to remote peer
-    // socket.emit("offer", offer);
+    socket.emit("call", data);
   };
 
-  const createAnswerFunction = async (offer: any) => {
-    const answer = await createAnswer(peerConnection, offer);
+  useEffect(() => {
+    socket.on("newCall", async (data) => {
+      console.log("MERHABA ARKADASLAR", data);
+      const offer = data.rtcMessage;
+      var answerSDP = await createAnswer(peerConnection, offer);
+      var sentData = {
+        "callerId": data.callerId,
+        "answer": answerSDP,
+      };
+      // Send answer to remote peer
+      socket.emit("answerCall", sentData);
+    })
 
-    console.log("Answer", answer);
+    socket.on("callAnswered", async (data) => {
+      const answer = data.rtcMessage;
+      console.log("PEKİ BURAYA");
+      await peerConnection.setRemoteDescription(answer);
 
-    // Send answer to remote peer
-    // socket.emit("answer", answer);
-  };
+
+      socket.emit("ICEcandidate", {
+        "callerId": otherUserId.current,
+        "rtcMessage": answer,
+      });
+
+      // Update remote stream on receiving remote track
+      peerConnection.ontrack = (event) => {
+        console.log("TRACK EVENT", event);
+      };
+
+    })
+
+
+
+  }, []);
 
   const startLocalStream = async () => {
     if (isLocalStreamStarted) {
@@ -80,13 +109,15 @@ const App = () => {
     setIsLocalStreamStarted(false);
   };
 
+
+
   const styles = StyleSheet.create({
     container: {
       flex: 1,
       backgroundColor: "#fff",
     },
     videoContainer: {
-      flex: 8,
+      flex: 4,
       justifyContent: "center",
       alignItems: "center",
     },
@@ -111,7 +142,7 @@ const App = () => {
     textInput: {
       borderWidth: 1,
       borderColor: "black",
-      width: "60%",
+      width: "50%",
       padding: 10,
     },
   });
@@ -131,15 +162,26 @@ const App = () => {
           )
         }
       </View>
+      <View style={styles.videoContainer}>
+        {
+          remoteStream && (
+            <RTCView
+              streamURL={remoteStream!.toURL()}
+              style={styles.video}
+            />
+          )
+        }
+      </View>
       <View style={styles.buttonContainer}>
-        <TextInput style={styles.textInput} placeholder="Enter other user id" onChangeText={(text) => console.log(text)} />
+        <TextInput style={styles.textInput} placeholder="Enter other user id" onChangeText={(text) => otherUserId.current = text} />
         {
           isLocalStreamStarted ? (
             <Button title="Stop Call" onPress={stopLocalStream} />
           ) : (
-            <Button title="Call Now" onPress={startLocalStream} />
+            <Button title="Call Now" onPress={createOfferFunction} />
           )
         }
+        <Button title="Start" onPress={startLocalStream} />
       </View>
     </SafeAreaView>
   );
