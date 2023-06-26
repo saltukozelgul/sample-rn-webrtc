@@ -1,12 +1,27 @@
-import React from "react";
-import { SafeAreaView, StyleSheet, View, Button } from "react-native";
+import React, { useRef, useState } from "react";
+import { SafeAreaView, StyleSheet, View, Button, Text, TextInput, NativeModules } from "react-native";
 import Snackbar from "react-native-snackbar";
 import { RTCView, mediaDevices, MediaStream } from "react-native-webrtc";
 import { createPeerConnection, createOffer, createAnswer } from "./utils/webrtc-utils";
+import SocketIOClient from "socket.io-client";
 
 const App = () => {
-  const [isLocalStreamStarted, setIsLocalStreamStarted] = React.useState<boolean>(false);
-  const [localStream, setLocalStream] = React.useState<MediaStream>();
+  const [callerId] = useState(
+    Math.floor(100000 + Math.random() * 900000).toString(),
+  );
+  const otherUserId = useRef(null);
+
+  const [isLocalStreamStarted, setIsLocalStreamStarted] = useState<boolean>(false);
+  const [localStream, setLocalStream] = useState<MediaStream>();
+  const [remoteStream, setRemoteStream] = useState<MediaStream>();
+
+  const socket = SocketIOClient("http://192.168.1.107:3500", {
+    transports: ["websocket"],
+    query: {
+      callerId,
+    },
+  });
+
   let peerConnection = createPeerConnection();
   let dataChannel = peerConnection.createDataChannel("dataChannel");
 
@@ -88,11 +103,24 @@ const App = () => {
     button: {
       marginHorizontal: 10,
     },
-
+    textContainer: {
+      flex: 1,
+      alignItems: "center",
+      justifyContent: "center",
+    },
+    textInput: {
+      borderWidth: 1,
+      borderColor: "black",
+      width: "60%",
+      padding: 10,
+    },
   });
 
   return (
     <SafeAreaView style={styles.container}>
+      <View style={styles.textContainer}>
+        <Text style={{ fontSize: 20 }}>Caller ID: {callerId}</Text>
+      </View>
       <View style={styles.videoContainer}>
         {
           localStream && (
@@ -104,14 +132,14 @@ const App = () => {
         }
       </View>
       <View style={styles.buttonContainer}>
+        <TextInput style={styles.textInput} placeholder="Enter other user id" onChangeText={(text) => console.log(text)} />
         {
           isLocalStreamStarted ? (
-            <Button title="Call" onPress={stopLocalStream} />
+            <Button title="Stop Call" onPress={stopLocalStream} />
           ) : (
-            <Button title="Stop" onPress={startLocalStream} />
+            <Button title="Call Now" onPress={startLocalStream} />
           )
         }
-        <Button title="Connect" onPress={createOfferFunction} />
       </View>
     </SafeAreaView>
   );
