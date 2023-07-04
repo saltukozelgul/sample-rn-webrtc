@@ -1,8 +1,4 @@
-<!DOCTYPE html>
-<html>
-<head>
-  <title>React Native WebRTC App</title>
-</head>
+
 <body>
   <h1>React Native WebRTC App</h1>
 
@@ -26,7 +22,7 @@
   <h2>Installation</h2>
   <ol>
     <li>Clone the repository:<br>
-      <code>git clone &lt;repository_url&gt;</code></li>
+      <code>git clone https://github.com/saltukozelgul/sample-rn-webrtc.git</code></li>
     <li>Navigate to the project directory:<br>
       <code>cd react-native-webrtc-app</code></li>
     <li>Install the dependencies:<br>
@@ -44,13 +40,12 @@
 
   <h2>Screenshots</h2>
   <!-- Add screenshots or preview images of the app here -->
-  <img src="./screenshots/screenshot1.jpg" alt="Screenshot 1">
-  <img src="./screenshots/screenshot2.jpg" alt="Screenshot 2">
+  <div align="center">
+      <img width="30%" src="./screenshots/screenshot1.jpg" alt="Screenshot 1">
+    <img width="30%" src="./screenshots/screenshot2.jpg" alt="Screenshot 2">
+  </div>
+
 
   <h2>Contributing</h2>
   <p>Contributions are welcome! If you encounter any issues or have suggestions, please open an issue or submit a pull request.</p>
-
-  <h2>License</h2>
-  <p><a href="LICENSE">MIT License</a></p>
 </body>
-</html>
