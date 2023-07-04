@@ -1,17 +1,19 @@
 import React, { useEffect, useRef, useState } from "react";
 import { SafeAreaView, StyleSheet, View, Button, Text, TextInput, NativeModules } from "react-native";
 import Snackbar from "react-native-snackbar";
-import { RTCView, mediaDevices, MediaStream } from "react-native-webrtc";
+import { RTCView, mediaDevices, MediaStream, RTCIceCandidate, RTCSessionDescription, RTCPeerConnection } from "react-native-webrtc";
 import { createPeerConnection, createOffer, createAnswer } from "./utils/webrtc-utils";
 import SocketIOClient from "socket.io-client";
 
 const App = () => {
+
   const [callerId] = useState(
     Math.floor(100000 + Math.random() * 900000).toString(),
   );
   const otherUserId = useRef<String>();
 
   const [isLocalStreamStarted, setIsLocalStreamStarted] = useState<boolean>(false);
+
   const [localStream, setLocalStream] = useState<MediaStream>();
   const [remoteStream, setRemoteStream] = useState<MediaStream>();
 
@@ -22,8 +24,23 @@ const App = () => {
     },
   });
 
-  let peerConnection = createPeerConnection();
-  let dataChannel = peerConnection.createDataChannel("dataChannel");
+  const peerConnection = useRef(
+    new RTCPeerConnection({
+      iceServers: [
+        {
+          urls: 'stun:stun.l.google.com:19302',
+        },
+        {
+          urls: 'stun:stun1.l.google.com:19302',
+        },
+        {
+          urls: 'stun:stun2.l.google.com:19302',
+        },
+      ],
+    }),
+  );
+
+  let remoteRTCMessage = useRef<any>(null);
 
   const createOfferFunction = async () => {
     // start local stream
@@ -39,7 +56,6 @@ const App = () => {
 
   useEffect(() => {
     socket.on("newCall", async (data) => {
-      console.log("MERHABA ARKADASLAR", data);
       const offer = data.rtcMessage;
       var answerSDP = await createAnswer(peerConnection, offer);
       var sentData = {
@@ -52,23 +68,36 @@ const App = () => {
 
     socket.on("callAnswered", async (data) => {
       const answer = data.rtcMessage;
-      console.log("PEKİ BURAYA");
-      await peerConnection.setRemoteDescription(answer);
-
-
-      socket.emit("ICEcandidate", {
-        "callerId": otherUserId.current,
-        "rtcMessage": answer,
-      });
-
-      // Update remote stream on receiving remote track
-      peerConnection.ontrack = (event) => {
-        console.log("TRACK EVENT", event);
-      };
-
+      await peerConnection.current.setRemoteDescription(
+        new RTCSessionDescription(answer),
+      );
     })
 
+    socket.on('ICEcandidate', data => {
+      let message = data.rtcMessage;
 
+      if (peerConnection) {
+        peerConnection.current.addIceCandidate(
+          new RTCIceCandidate({
+            candidate: message.candidate,
+            sdpMid: message.id,
+            sdpMLineIndex: message.label,
+          }),
+        )
+          .then(data => {
+            console.log('SUCCESS');
+          })
+          .catch(err => {
+            console.log('Error', err);
+          });
+      }
+    });
+
+    return () => {
+      socket.off("newCall");
+      socket.off("callAnswered");
+      socket.off("ICEcandidate");
+    };
 
   }, []);
 
@@ -87,7 +116,7 @@ const App = () => {
     });
     // Add tracks to peer connection
     stream.getTracks().forEach((track) => {
-      peerConnection?.addTrack(track, stream);
+      peerConnection?.current.addTrack(track, stream);
     });
     setLocalStream(stream);
     setIsLocalStreamStarted(true);
@@ -108,8 +137,6 @@ const App = () => {
     setLocalStream(undefined);
     setIsLocalStreamStarted(false);
   };
-
-
 
   const styles = StyleSheet.create({
     container: {
