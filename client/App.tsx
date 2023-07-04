@@ -75,6 +75,7 @@ const App = () => {
     })
 
     socket.on("callAnswered", async (data) => {
+
       remoteRTCMessage.current = data.rtcMessage;
       await peerConnection.current.setRemoteDescription(
         new RTCSessionDescription(remoteRTCMessage.current),
