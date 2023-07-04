@@ -40,10 +40,10 @@ export const createAnswer = async (peerConnection, offeredDescriptionStr) => {
             VoiceActivityDetection: true
         }
     };
-    await peerConnection.setRemoteDescription(offeredDescriptionStr);
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    return peerConnection.localDescription;
+    await peerConnection.current.setRemoteDescription(offeredDescriptionStr);
+    const answer = await peerConnection.current.createAnswer();
+    await peerConnection.current.setLocalDescription(answer);
+    return peerConnection.current.localDescription;
 }
 
 

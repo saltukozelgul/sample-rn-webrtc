@@ -17,7 +17,7 @@ const App = () => {
   const [localStream, setLocalStream] = useState<MediaStream>();
   const [remoteStream, setRemoteStream] = useState<MediaStream>();
 
-  const socket = SocketIOClient("http://192.168.1.107:3500", {
+  const socket = SocketIOClient("http://192.168.0.12:3500", {
     transports: ["websocket"],
     query: {
       callerId,
@@ -45,10 +45,18 @@ const App = () => {
   const createOfferFunction = async () => {
     // start local stream
     await startLocalStream();
-    const offer = await createOffer(peerConnection);
+    let sessionConstraints = {
+      mandatory: {
+        OfferToReceiveAudio: true,
+        OfferToReceiveVideo: true,
+        VoiceActivityDetection: true
+      }
+    };
+    const sessionDescription = await peerConnection.current.createOffer(sessionConstraints);
+    await peerConnection.current.setLocalDescription(sessionDescription);
     var data = {
       "calleeId": otherUserId.current,
-      "rtcMessage": offer,
+      "rtcMessage": sessionDescription,
     };
     // Send offer to remote peer
     socket.emit("call", data);
@@ -67,9 +75,9 @@ const App = () => {
     })
 
     socket.on("callAnswered", async (data) => {
-      const answer = data.rtcMessage;
+      remoteRTCMessage.current = data.rtcMessage;
       await peerConnection.current.setRemoteDescription(
-        new RTCSessionDescription(answer),
+        new RTCSessionDescription(remoteRTCMessage.current),
       );
     })
 
@@ -92,6 +100,26 @@ const App = () => {
           });
       }
     });
+
+    peerConnection.current.ontrack = (ev: any) => {
+      setRemoteStream(ev.streams[0]);
+    };
+
+    peerConnection.current.onicecandidate = (event: any) => {
+      if (event.candidate) {
+        const data = {
+          calleeId: otherUserId.current,
+          rtcMessage: {
+            label: event.candidate.sdpMLineIndex,
+            id: event.candidate.sdpMid,
+            candidate: event.candidate.candidate,
+          },
+        };
+        socket.emit('ICEcandidate', data);
+      } else {
+        console.log('End of candidates.');
+      }
+    };
 
     return () => {
       socket.off("newCall");
@@ -217,3 +245,4 @@ const App = () => {
 };
 
 export default App;
+
